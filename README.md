@@ -6,6 +6,7 @@ This program takes as an input the logfile (or output file) of a TeraChem QM/MM 
 `tcmdir -i tc.out -o ir_data.csv`
 
 This command takes input (`-i`) and output (`-o`) flags with their respective filenames, and generates a CSV file with the wavenumbers ($cm^{-1}$) and corresponding intensities.  This file may be used with contemporary plotting software ranging from `matplotlib` to `Excel`, depending on the user's preference.
+Additionally, the program checks for the existence of a python installation and generates a basic plot of the data generated.
 
 #### Future Goals
 - Implementation of this functionality directly into TeraChem as a keyword-flagged option or just as a part of the MD simulation.
