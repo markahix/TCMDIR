@@ -1,0 +1,6 @@
+test_data/
+bin/
+obj/
+.vscode/
+ir_data.*
+*.ipynb
