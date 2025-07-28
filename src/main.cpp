@@ -479,11 +479,6 @@ int main(int argc, char **argv)
     // Declare variables
     std::string input_filename = "";
     std::string output_filename = "";
-    std::vector <std::vector<double>> dipoles = {};
-    std::vector<double> autocorr_function;
-    std::vector<double> times = {};
-    double timestep;
-    int n_frames;
 
     // Parse command line arguments, validate input file's existence.
     parse_args(argc,argv,input_filename,output_filename);
@@ -520,40 +515,5 @@ int main(int argc, char **argv)
         MainJob(input_filename,tmp_output_filename, "TOT DIPOLE MOMENT");
     }
 
-    // // Process input file to xyz of dipole moments.
-    // dipoles = process_file_to_dipoles(input_filename,"DIPOLE MOMENT");
-
-    // // get timestep in fs.
-    // timestep = get_timestep(input_filename);
-
-    // // Calculate Autocorrelation Function
-    // autocorr_function = get_dipole_derivatives_acf(dipoles, timestep);
-    // std::cout << "Calculated autocorrelation function of dipoles over time." << std::endl;
-
-    // // Generate array of times in fs.
-    // times = get_times(autocorr_function,timestep);
-
-    // // Smooth ACF with tapered cosine function.
-    // autocorr_function = tapered_cosine_smoothing(autocorr_function, times);
-    // std::cout << "Smoothed autocorrelation with tapered cosine." << std::endl;
-
-    // // Calculate intensities @ frequencies.
-    // std::vector<double> frequencies = {};
-    // std::vector<double> intensities = {};
-    // power_spectrum(times, autocorr_function, frequencies, intensities);
-    // std::cout << "Calculated IR spectrum and frequencies." << std::endl;
-
-    // // Save wavenumbers and intensities to CSV file.
-    // std::ofstream ofile(output_filename,std::ios::out);
-    // ofile << "Wavenumber(cm-1), Intensity" << std::endl;
-    // for (int i=0; i < intensities.size(); i++)
-    // {
-    //     ofile << frequencies[i] << ", " << intensities[i] << std::endl;
-    // }
-    // ofile.close();
-
-    // std::cout << "IR Spectral data has been written to " << output_filename << std::endl;
-
-    // PlotWithPython(output_filename);
     return 0;
 }
