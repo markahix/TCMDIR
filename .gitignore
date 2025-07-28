@@ -4,3 +4,6 @@ obj/
 .vscode/
 ir_data.*
 *.ipynb
+*.png
+*.csv
+test_all_systems.sh

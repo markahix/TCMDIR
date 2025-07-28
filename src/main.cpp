@@ -141,14 +141,14 @@ double get_timestep(std::string input_filename)
     exit(0);
 }
 
-std::vector <std::vector<double>> process_file_to_dipoles(std::string input_filename)
+std::vector <std::vector<double>> process_file_to_dipoles(std::string input_filename,std::string dipole_string)
 {
     std::vector <std::vector<double>> dipoles = {};
     std::ifstream ifile(input_filename,std::ios::in);
     std::string line;
     while (getline(ifile,line))
     {
-        if (line.find("DIPOLE MOMENT")== std::string::npos)
+        if (line.find(dipole_string)== std::string::npos)
         {
             continue;
         }
@@ -388,23 +388,57 @@ void PlotWithPython(std::string outfile_name)
     silent_shell("python plot.py; rm plot.py");
 }
 
-int main(int argc, char **argv)
+void DetectDipoleType(bool &unsplit_dipole, bool &qm_dipole, bool &mm_dipole, bool &total_dipole, std::string input_filename)
 {
-    // Declare variables
-    std::string input_filename = "";
-    std::string output_filename = "";
+    /*
+QM  DIPOLE MOMENT: {31.907321, -38.630607, 15.226459} (|D| = 52.366459) DEBYE
+MM  DIPOLE MOMENT: {296.566040, -130.746148, -265.535705} (|D| = 418.993057) DEBYE
+TOT DIPOLE MOMENT: {328.473361, -169.376755, -250.309245} (|D| = 446.360788) DEBYE
+DIPOLE MOMENT: {-1.099035, -1.203162, 5.803053} (|D| = 6.027512) DEBYE
+    */
+
+    std::ifstream ifile(input_filename,std::ios::in);
+    std::string line;
+    while (getline(ifile,line))
+    {
+        if (line.find("QM  DIPOLE MOMENT") != std::string::npos)
+        {
+            qm_dipole=true;
+        }
+        else if (line.find("MM  DIPOLE MOMENT") != std::string::npos)
+        {
+            mm_dipole=true;
+        }
+        else if (line.find("TOT DIPOLE MOMENT") != std::string::npos)
+        {
+            total_dipole=true;
+        }
+        else if (line.find("DIPOLE MOMENT") != std::string::npos)
+        {
+            unsplit_dipole=true;
+        }
+        if ((qm_dipole) && (mm_dipole) && (total_dipole))
+        {
+            break;
+        }
+        if (unsplit_dipole)
+        {
+            break;
+        }
+    }
+    ifile.close();
+}
+
+void MainJob(std::string input_filename, std::string output_filename, std::string dipole_substring)
+{
     std::vector <std::vector<double>> dipoles = {};
     std::vector<double> autocorr_function;
     std::vector<double> times = {};
     double timestep;
     int n_frames;
 
-    // Parse command line arguments, validate input file's existence.
-    parse_args(argc,argv,input_filename,output_filename);
-    validate_input_file(input_filename);
-    
     // Process input file to xyz of dipole moments.
-    dipoles = process_file_to_dipoles(input_filename);
+    dipoles = process_file_to_dipoles(input_filename, dipole_substring);
 
     // get timestep in fs.
     timestep = get_timestep(input_filename);
@@ -438,5 +472,88 @@ int main(int argc, char **argv)
     std::cout << "IR Spectral data has been written to " << output_filename << std::endl;
 
     PlotWithPython(output_filename);
+}
+
+int main(int argc, char **argv)
+{
+    // Declare variables
+    std::string input_filename = "";
+    std::string output_filename = "";
+    std::vector <std::vector<double>> dipoles = {};
+    std::vector<double> autocorr_function;
+    std::vector<double> times = {};
+    double timestep;
+    int n_frames;
+
+    // Parse command line arguments, validate input file's existence.
+    parse_args(argc,argv,input_filename,output_filename);
+    validate_input_file(input_filename);
+    
+    // Identify type of dipoles to be encountered:
+    bool unsplit_dipole=false;
+    bool qm_dipole=false;
+    bool mm_dipole=false;
+    bool total_dipole=false;
+    DetectDipoleType(unsplit_dipole,qm_dipole,mm_dipole,total_dipole,input_filename);
+
+    if (unsplit_dipole)
+    {
+        std::cout << "Identified single dipoles value in given file." << std::endl;
+        MainJob(input_filename,output_filename, "DIPOLE MOMENT");
+    }
+    if (qm_dipole)
+    {
+        std::cout << "Identified QM-specific dipole values in given file." << std::endl;
+        std::string tmp_output_filename = output_filename.substr(0,output_filename.find_last_of('.')) + "_QM_IR.csv";
+        MainJob(input_filename,tmp_output_filename, "QM  DIPOLE MOMENT");
+    }
+    if (mm_dipole)
+    {
+        std::cout << "Identified MM-specific dipole values in given file." << std::endl;
+        std::string tmp_output_filename = output_filename.substr(0,output_filename.find_last_of('.')) + "_MM_IR.csv";
+        MainJob(input_filename,tmp_output_filename, "MM  DIPOLE MOMENT");
+    }
+    if (total_dipole)
+    {
+        std::cout << "Identified combined QM/MM dipole values in given file." << std::endl;
+        std::string tmp_output_filename = output_filename.substr(0,output_filename.find_last_of('.')) + "_Combined_IR.csv";
+        MainJob(input_filename,tmp_output_filename, "TOT DIPOLE MOMENT");
+    }
+
+    // // Process input file to xyz of dipole moments.
+    // dipoles = process_file_to_dipoles(input_filename,"DIPOLE MOMENT");
+
+    // // get timestep in fs.
+    // timestep = get_timestep(input_filename);
+
+    // // Calculate Autocorrelation Function
+    // autocorr_function = get_dipole_derivatives_acf(dipoles, timestep);
+    // std::cout << "Calculated autocorrelation function of dipoles over time." << std::endl;
+
+    // // Generate array of times in fs.
+    // times = get_times(autocorr_function,timestep);
+
+    // // Smooth ACF with tapered cosine function.
+    // autocorr_function = tapered_cosine_smoothing(autocorr_function, times);
+    // std::cout << "Smoothed autocorrelation with tapered cosine." << std::endl;
+
+    // // Calculate intensities @ frequencies.
+    // std::vector<double> frequencies = {};
+    // std::vector<double> intensities = {};
+    // power_spectrum(times, autocorr_function, frequencies, intensities);
+    // std::cout << "Calculated IR spectrum and frequencies." << std::endl;
+
+    // // Save wavenumbers and intensities to CSV file.
+    // std::ofstream ofile(output_filename,std::ios::out);
+    // ofile << "Wavenumber(cm-1), Intensity" << std::endl;
+    // for (int i=0; i < intensities.size(); i++)
+    // {
+    //     ofile << frequencies[i] << ", " << intensities[i] << std::endl;
+    // }
+    // ofile.close();
+
+    // std::cout << "IR Spectral data has been written to " << output_filename << std::endl;
+
+    // PlotWithPython(output_filename);
     return 0;
 }
